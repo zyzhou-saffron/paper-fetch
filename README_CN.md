@@ -1,0 +1,159 @@
+# paper-fetch — 合法开放获取 PDF 下载器
+
+[English](README.md)
+
+## 功能简介
+
+- 根据 **DOI**（或 DOI 批量文件）从合法开放获取源下载论文 PDF
+- **5 源回退链**：Unpaywall → Semantic Scholar `openAccessPdf` → arXiv → PubMed Central OA → bioRxiv/medRxiv
+- **零依赖** — 纯 Python 标准库，无需 `pip install`
+- **自动命名**：`{第一作者}_{年份}_{简短标题}.pdf`
+- **批量模式**：`--batch` 传入 DOI 列表文件
+- **不使用 Sci-Hub 或任何绕过付费墙的服务** — 没有 OA 版本时会报告失败并输出元数据，便于走馆际互借
+
+## 多平台支持
+
+| 平台 | 状态 | 说明 |
+|------|------|------|
+| **Claude Code** | ✅ 完全支持 | 原生 SKILL.md |
+| **OpenClaw / ClawHub** | ✅ 完全支持 | `metadata.openclaw` 命名空间 |
+| **Hermes Agent** | ✅ 完全支持 | 安装到 research 分类 |
+| **OpenAI Codex** | ✅ 完全支持 | `agents/openai.yaml` sidecar |
+| **SkillsMP** | ✅ 已索引 | GitHub topics 已配置 |
+
+## 对比
+
+### vs 原生 agent（无 skill）
+
+| 功能 | 原生 agent | 本 skill |
+|------|----------|----------|
+| DOI → PDF | 临时网络搜索 | 确定性 5 源链 |
+| Unpaywall 集成 | 无 | 有，覆盖率最高 |
+| arXiv / PMC / bioRxiv 回退 | 手动 | 自动 |
+| 批量下载 | 无 | `--batch dois.txt` |
+| 一致的文件命名 | 无 | `author_year_title.pdf` |
+| 合法来源保证 | 无 | 硬性拒绝付费墙绕过 |
+| 依赖 | 各异 | 仅 Python 标准库 |
+
+## 环境要求
+
+- **Python 3.8+**（仅标准库）
+- **Unpaywall 联系邮箱**（一次性配置环境变量）：
+
+```bash
+export UNPAYWALL_EMAIL=you@example.com
+```
+
+加入 `~/.zshrc` / `~/.bashrc` 持久化。Unpaywall 免费，无账号系统，邮箱仅在请求异常时联系你。
+
+## 安装
+
+### Claude Code
+
+```bash
+# 全局安装
+git clone https://github.com/Agents365-ai/paper-fetch.git ~/.claude/skills/paper-fetch
+
+# 项目级
+git clone https://github.com/Agents365-ai/paper-fetch.git .claude/skills/paper-fetch
+```
+
+### OpenClaw / ClawHub
+
+```bash
+clawhub install paper-fetch
+
+# 或手动
+git clone https://github.com/Agents365-ai/paper-fetch.git ~/.openclaw/skills/paper-fetch
+```
+
+### Hermes Agent
+
+```bash
+git clone https://github.com/Agents365-ai/paper-fetch.git ~/.hermes/skills/research/paper-fetch
+```
+
+或在 `~/.hermes/config.yaml` 中配置：
+
+```yaml
+skills:
+  external_dirs:
+    - ~/myskills/paper-fetch
+```
+
+### OpenAI Codex
+
+```bash
+git clone https://github.com/Agents365-ai/paper-fetch.git ~/.agents/skills/paper-fetch
+```
+
+### SkillsMP
+
+```bash
+skills install paper-fetch
+```
+
+### 安装路径一览
+
+| 平台 | 全局路径 | 项目路径 |
+|------|---------|---------|
+| Claude Code | `~/.claude/skills/paper-fetch/` | `.claude/skills/paper-fetch/` |
+| OpenClaw | `~/.openclaw/skills/paper-fetch/` | `skills/paper-fetch/` |
+| Hermes Agent | `~/.hermes/skills/research/paper-fetch/` | 通过 `external_dirs` |
+| OpenAI Codex | `~/.agents/skills/paper-fetch/` | `.agents/skills/paper-fetch/` |
+| SkillsMP | CLI 安装 | 无 |
+
+## 使用
+
+单个 DOI：
+
+```bash
+python scripts/fetch.py 10.1038/s41586-021-03819-2
+```
+
+指定输出目录：
+
+```bash
+python scripts/fetch.py 10.1038/s41586-021-03819-2 --out ~/papers
+```
+
+批量模式：
+
+```bash
+python scripts/fetch.py --batch dois.txt --out ~/papers
+```
+
+或者直接对 agent 说：
+
+> 帮我把 AlphaFold2 那篇论文下到 `~/papers`
+
+## 解析顺序
+
+1. **Unpaywall** — 全出版社 OA 最佳位置（命中率最高）
+2. **Semantic Scholar** — `openAccessPdf` 字段 + `externalIds`
+3. **arXiv** — 论文有 arXiv ID 时
+4. **PubMed Central OA 子集** — 论文有 PMCID 时
+5. **bioRxiv / medRxiv** — DOI 前缀为 `10.1101/`
+6. 都失败 → 输出元数据提示走馆际互借
+
+## 文件说明
+
+- `SKILL.md` — **唯一必需文件**，所有平台都加载它
+- `scripts/fetch.py` — 下载器（纯标准库）
+- `agents/openai.yaml` — Codex 配置
+- `README.md` / `README_CN.md` — 文档
+
+## 已知限制
+
+- **覆盖率取决于 OA 可用性** — 没有合法 OA 版本的论文本 skill 无法获取，这是刻意设计
+- **必须设置 Unpaywall 邮箱**，否则脚本报错退出
+- **部分出版社重定向**返回 HTML 落地页而非 PDF，脚本会校验 `%PDF` 头并优雅失败
+- **不支持机构代理**（EZproxy / OpenAthens）
+
+## 许可
+
+MIT
+
+## 作者
+
+**Agents365-ai** — https://github.com/Agents365-ai
