@@ -20,6 +20,7 @@ Works with all major AI coding agents that support the Agent Skills format:
 | **Claude Code** | ✅ Full support | Native SKILL.md format |
 | **OpenClaw / ClawHub** | ✅ Full support | `metadata.openclaw` namespace |
 | **Hermes Agent** | ✅ Full support | Installable under research category |
+| **[pi-mono](https://github.com/badlogic/pi-mono)** | ✅ Full support | `metadata.pimo` namespace |
 | **OpenAI Codex** | ✅ Full support | `agents/openai.yaml` sidecar |
 | **SkillsMP** | ✅ Indexed | GitHub topics configured |
 
@@ -83,6 +84,12 @@ skills:
     - ~/myskills/paper-fetch
 ```
 
+### pi-mono
+
+```bash
+git clone https://github.com/Agents365-ai/paper-fetch.git ~/.pimo/skills/paper-fetch
+```
+
 ### OpenAI Codex
 
 ```bash
@@ -106,6 +113,7 @@ skills install paper-fetch
 | Claude Code | `~/.claude/skills/paper-fetch/` | `.claude/skills/paper-fetch/` |
 | OpenClaw | `~/.openclaw/skills/paper-fetch/` | `skills/paper-fetch/` |
 | Hermes Agent | `~/.hermes/skills/research/paper-fetch/` | Via `external_dirs` |
+| pi-mono | `~/.pimo/skills/paper-fetch/` | — |
 | OpenAI Codex | `~/.agents/skills/paper-fetch/` | `.agents/skills/paper-fetch/` |
 | SkillsMP | N/A (installed via CLI) | N/A |
 
@@ -167,8 +175,33 @@ Or just ask your agent naturally:
 
 MIT
 
+## Support
+
+If this skill helps your work, consider supporting the author:
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/wechat-pay.png" width="180" alt="WeChat Pay">
+      <br>
+      <b>WeChat Pay</b>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/alipay.png" width="180" alt="Alipay">
+      <br>
+      <b>Alipay</b>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/buymeacoffee.png" width="180" alt="Buy Me a Coffee">
+      <br>
+      <b>Buy Me a Coffee</b>
+    </td>
+  </tr>
+</table>
+
 ## Author
 
 **Agents365-ai**
 
+- Bilibili: https://space.bilibili.com/441831884
 - GitHub: https://github.com/Agents365-ai

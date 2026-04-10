@@ -18,6 +18,7 @@
 | **Claude Code** | ✅ 完全支持 | 原生 SKILL.md |
 | **OpenClaw / ClawHub** | ✅ 完全支持 | `metadata.openclaw` 命名空间 |
 | **Hermes Agent** | ✅ 完全支持 | 安装到 research 分类 |
+| **[pi-mono](https://github.com/badlogic/pi-mono)** | ✅ 完全支持 | `metadata.pimo` 命名空间 |
 | **OpenAI Codex** | ✅ 完全支持 | `agents/openai.yaml` sidecar |
 | **SkillsMP** | ✅ 已索引 | GitHub topics 已配置 |
 
@@ -81,6 +82,12 @@ skills:
     - ~/myskills/paper-fetch
 ```
 
+### pi-mono
+
+```bash
+git clone https://github.com/Agents365-ai/paper-fetch.git ~/.pimo/skills/paper-fetch
+```
+
 ### OpenAI Codex
 
 ```bash
@@ -100,6 +107,7 @@ skills install paper-fetch
 | Claude Code | `~/.claude/skills/paper-fetch/` | `.claude/skills/paper-fetch/` |
 | OpenClaw | `~/.openclaw/skills/paper-fetch/` | `skills/paper-fetch/` |
 | Hermes Agent | `~/.hermes/skills/research/paper-fetch/` | 通过 `external_dirs` |
+| pi-mono | `~/.pimo/skills/paper-fetch/` | — |
 | OpenAI Codex | `~/.agents/skills/paper-fetch/` | `.agents/skills/paper-fetch/` |
 | SkillsMP | CLI 安装 | 无 |
 
@@ -154,6 +162,33 @@ python scripts/fetch.py --batch dois.txt --out ~/papers
 
 MIT
 
+## 支持
+
+如果这个 skill 对你有帮助，欢迎支持作者：
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/wechat-pay.png" width="180" alt="WeChat Pay">
+      <br>
+      <b>微信支付</b>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/alipay.png" width="180" alt="Alipay">
+      <br>
+      <b>支付宝</b>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/buymeacoffee.png" width="180" alt="Buy Me a Coffee">
+      <br>
+      <b>Buy Me a Coffee</b>
+    </td>
+  </tr>
+</table>
+
 ## 作者
 
-**Agents365-ai** — https://github.com/Agents365-ai
+**Agents365-ai**
+
+- Bilibili: https://space.bilibili.com/441831884
+- GitHub: https://github.com/Agents365-ai

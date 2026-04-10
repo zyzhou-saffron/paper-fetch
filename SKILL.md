@@ -2,7 +2,7 @@
 name: paper-fetch
 description: Use when the user wants to download a paper PDF from a DOI, title, or URL via legal open-access sources. Tries Unpaywall, arXiv, bioRxiv/medRxiv, PubMed Central, and Semantic Scholar in order. Never uses Sci-Hub or paywall bypass.
 homepage: https://github.com/Agents365-ai/paper-fetch
-metadata: {"openclaw":{"requires":{"bins":["python3"],"env":["UNPAYWALL_EMAIL"]},"emoji":"📄"}}
+metadata: {"openclaw":{"requires":{"bins":["python3"],"env":["UNPAYWALL_EMAIL"]},"emoji":"📄"},"pimo":{"category":"research","tags":["paper","pdf","doi","open-access","download"]}}
 ---
 
 # paper-fetch
