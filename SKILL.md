@@ -15,7 +15,7 @@ Fetch the legal open-access PDF for a paper given a DOI (or title). Tries multip
 2. **Semantic Scholar** — `https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}?fields=openAccessPdf,externalIds`
 3. **arXiv** — if `externalIds.ArXiv` present, `https://arxiv.org/pdf/{arxiv_id}.pdf`
 4. **PubMed Central OA** — if PMCID present, `https://www.ncbi.nlm.nih.gov/pmc/articles/{pmcid}/pdf/`
-5. **bioRxiv / medRxiv** — if DOI prefix is `10.1101`, use the `claude_ai_bioRxiv` MCP `get_preprint` tool, then fetch the PDF URL
+5. **bioRxiv / medRxiv** — if DOI prefix is `10.1101`, query `https://api.biorxiv.org/details/{server}/{doi}` for the latest version PDF URL
 6. Otherwise → report failure with title/authors so the user can request via ILL
 
 If only a title is given, resolve to a DOI first via Semantic Scholar `search_paper_by_title` (asta MCP) or Crossref.

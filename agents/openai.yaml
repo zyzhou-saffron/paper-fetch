@@ -1,7 +1,7 @@
 # OpenAI Codex sidecar configuration for paper-fetch
 name: paper-fetch
-version: 0.1.0
-description: Download paper PDFs by DOI via legal open-access sources (Unpaywall, arXiv, PMC, bioRxiv).
+version: 0.3.0
+description: Download paper PDFs by DOI via legal open-access sources (Unpaywall, Semantic Scholar, arXiv, PMC, bioRxiv/medRxiv).
 entry: SKILL.md
 
 ui:
@@ -10,7 +10,8 @@ ui:
 
 requires:
   bins: [python3]
-  env: [UNPAYWALL_EMAIL]
+  # UNPAYWALL_EMAIL is optional — if not set, Unpaywall is skipped
+  # and the remaining 4 sources still work.
 
 policy:
   network: true
