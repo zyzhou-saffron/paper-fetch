@@ -12,6 +12,9 @@ pdfs/
 # Playwright MCP workspace
 .playwright-mcp/
 
+# Tests
+tests/
+
 # OS cruft
 .DS_Store
 Thumbs.db
