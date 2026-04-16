@@ -9,7 +9,7 @@ metadata: {"openclaw":{"requires":{"bins":["python3"]},"emoji":"📄"},"pimo":{"
 
 Fetch the legal open-access PDF for a paper given a DOI (or title). Tries multiple OA sources in priority order and stops at the first hit.
 
-**Agent-native.** Structured JSON envelope on stdout, NDJSON progress on stderr, stable exit codes, machine-readable schema, TTY-aware format default, idempotent retries.
+**Agent-native.** Structured JSON envelope on stdout, NDJSON progress on stderr (with a session header emitting `schema_version` / `cli_version` for drift detection), stable exit codes, machine-readable schema, TTY-aware format default, idempotent retries. `retry_after_hours` is emitted on every retryable error class.
 
 ## Resolution order
 
@@ -81,8 +81,8 @@ Emits a complete machine-readable description of the CLI on stdout (no network).
   "meta": {
     "request_id": "req_a908f5156fc1",
     "latency_ms": 2036,
-    "schema_version": "1.1.0",
-    "cli_version": "0.3.0",
+    "schema_version": "1.3.0",
+    "cli_version": "0.7.0",
     "sources_tried": ["unpaywall"]
   }
 }
@@ -160,13 +160,14 @@ The cached envelope is returned verbatim, but `meta.request_id` and `meta.latenc
 When `--format json`, stderr emits one JSON object per line for liveness:
 
 ```
+{"event": "session",     "request_id": "req_...", "elapsed_ms": 0,    "cli_version": "0.6.1", "schema_version": "1.3.0"}
 {"event": "start",       "request_id": "req_...", "elapsed_ms": 2,    "doi": "10.1038/..."}
 {"event": "source_try",  "request_id": "req_...", "elapsed_ms": 2,    "doi": "...", "source": "unpaywall"}
 {"event": "source_hit",  "request_id": "req_...", "elapsed_ms": 2036, "doi": "...", "source": "unpaywall", "pdf_url": "..."}
 {"event": "download_ok", "request_id": "req_...", "elapsed_ms": 4120, "doi": "...", "file": "..."}
 ```
 
-Event types: `start`, `source_try`, `source_hit`, `source_miss`, `source_skip`, `source_enrich`, `source_enrich_failed`, `download_ok`, `download_error`, `download_skip`, `dry_run`, `not_found`, `update_check_spawned`. All events share `request_id` and `elapsed_ms`, letting an orchestrator correlate progress across stderr and the final stdout envelope.
+Event types: `session`, `start`, `source_try`, `source_hit`, `source_miss`, `source_skip`, `source_enrich`, `source_enrich_failed`, `download_ok`, `download_error`, `download_skip`, `dry_run`, `not_found`, `update_check_spawned`. All events share `request_id` and `elapsed_ms`, letting an orchestrator correlate progress across stderr and the final stdout envelope. The `session` event fires once per invocation, before any DOI work or network I/O, and carries `cli_version` / `schema_version` so agents can detect schema drift against a cached copy without waiting for the final envelope.
 
 `source_enrich` fires when Semantic Scholar is called purely to backfill missing `author` / `title` after another source already provided the PDF URL; its `fields` array lists exactly which fields were filled in. `source_enrich_failed` fires when that enrichment call fails — the Unpaywall PDF URL is still used and the filename falls back to `unknown_<year>_…`.
 
@@ -186,16 +187,20 @@ The taxonomy lets an orchestrator route failures deterministically: exit 4 is wo
 
 ### Error codes in JSON
 
-| Code | Meaning | Retryable |
-|------|---------|-----------|
-| `validation_error` | Bad arguments or empty input | No |
-| `not_found` | No open-access PDF found | Yes (retry after `retry_after_hours: 168`) |
-| `download_network_error` | Network failure during download | Yes |
-| `download_not_a_pdf` | Response was not a PDF (HTML landing page) | No |
-| `download_host_not_allowed` | PDF URL host not in allowlist | No |
-| `download_size_exceeded` | Response exceeded 50 MB limit | Yes |
-| `download_io_error` | Local filesystem write failed | Yes |
-| `internal_error` | Unexpected error | No |
+Every retryable error carries a `retry_after_hours` hint in the error object, so an orchestrator can schedule retries without guessing.
+
+| Code | Meaning | Retryable | `retry_after_hours` |
+|------|---------|-----------|---------------------|
+| `validation_error` | Bad arguments or empty input | No | — |
+| `not_found` | No open-access PDF found | Yes | `168` (one week — OA lands on embargo / preprint timescale) |
+| `download_network_error` | Network failure during download | Yes | `1` |
+| `download_not_a_pdf` | Response was not a PDF (HTML landing page) | No | — |
+| `download_host_not_allowed` | PDF URL host not in allowlist | No | — |
+| `download_size_exceeded` | Response exceeded 50 MB limit | Yes | `24` |
+| `download_io_error` | Local filesystem write failed | Yes | `1` |
+| `internal_error` | Unexpected error | No | — |
+
+The canonical mapping lives in `RETRY_AFTER_HOURS` in `scripts/fetch.py` and is surfaced in `schema.error_codes`.
 
 ### Examples
 

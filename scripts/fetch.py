@@ -39,8 +39,8 @@ from pathlib import Path
 # Versioning
 # ---------------------------------------------------------------------------
 
-CLI_VERSION = "0.6.0"
-SCHEMA_VERSION = "1.2.0"
+CLI_VERSION = "0.7.0"
+SCHEMA_VERSION = "1.3.0"
 
 # ---------------------------------------------------------------------------
 # Config
@@ -71,6 +71,16 @@ EXIT_UNRESOLVED = 1
 EXIT_AUTH = 2  # reserved
 EXIT_VALIDATION = 3
 EXIT_TRANSPORT = 4
+
+# Per-error retry backoff hints surfaced to agents. Only set on retryable=True
+# codes. Values are recommendations, not guarantees: an orchestrator that
+# ignores them and retries sooner will at worst re-hit the same failure.
+RETRY_AFTER_HOURS = {
+    "not_found": 168,              # OA availability changes on embargo / preprint timescale
+    "download_network_error": 1,   # transient network / upstream hiccup
+    "download_size_exceeded": 24,  # publisher posted a >50 MB PDF; revisit in a day
+    "download_io_error": 1,        # local disk full / permission blip
+}
 
 _BASE_ALLOWED_HOSTS = {
     "api.unpaywall.org",
@@ -160,6 +170,9 @@ def _progress(event: str, **fields) -> None:
         return
 
     # Text mode — render a short human line.
+    if event == "session":
+        # Agent-only diagnostic; silent in human mode.
+        return
     if event == "start":
         _log_text(f"==> {fields.get('doi', '?')}")
     elif event == "source_skip":
@@ -441,6 +454,18 @@ def _download_failure(
     """Build a per-item download failure result. `errors` must be non-empty."""
     last = errors[-1]
     retryable = last["reason"] in ("network_error", "size_exceeded", "io_error")
+    code = f"download_{last['reason']}"
+    err_obj = {
+        "code": code,
+        "message": (
+            f"All {len(errors)} candidate(s) failed; last error from {last['source']}: {last['reason']}"
+            if len(errors) > 1
+            else f"Download failed from {last['source']}: {last['reason']}"
+        ),
+        "retryable": retryable,
+    }
+    if retryable and code in RETRY_AFTER_HOURS:
+        err_obj["retry_after_hours"] = RETRY_AFTER_HOURS[code]
     out = {
         "doi": doi,
         "success": False,
@@ -450,15 +475,7 @@ def _download_failure(
         "meta": meta or {},
         "sources_tried": sources_tried,
         "download_attempts": errors,
-        "error": {
-            "code": f"download_{last['reason']}",
-            "message": (
-                f"All {len(errors)} candidate(s) failed; last error from {last['source']}: {last['reason']}"
-                if len(errors) > 1
-                else f"Download failed from {last['source']}: {last['reason']}"
-            ),
-            "retryable": retryable,
-        },
+        "error": err_obj,
     }
     if candidates:
         out["candidates"] = [{"source": s, "url": u} for s, u in candidates]
@@ -655,7 +672,7 @@ def fetch(
                 "code": "not_found",
                 "message": "No open-access PDF found",
                 "retryable": True,
-                "retry_after_hours": 168,
+                "retry_after_hours": RETRY_AFTER_HOURS["not_found"],
                 "reason": "OA availability changes over time; retry after embargo lifts or preprint appears",
             },
         }
@@ -799,12 +816,12 @@ def build_schema() -> dict:
         },
         "error_codes": {
             "validation_error": {"retryable": False, "message": "Bad arguments or empty input"},
-            "not_found": {"retryable": True, "retry_after_hours": 168, "message": "No OA PDF found anywhere; OA availability changes over time"},
-            "download_network_error": {"retryable": True, "message": "Network failure during download"},
+            "not_found": {"retryable": True, "retry_after_hours": RETRY_AFTER_HOURS["not_found"], "message": "No OA PDF found anywhere; OA availability changes over time"},
+            "download_network_error": {"retryable": True, "retry_after_hours": RETRY_AFTER_HOURS["download_network_error"], "message": "Network failure during download"},
             "download_not_a_pdf": {"retryable": False, "message": "Response was not a PDF (HTML landing page)"},
             "download_host_not_allowed": {"retryable": False, "message": "PDF URL host not in allowlist"},
-            "download_size_exceeded": {"retryable": True, "message": f"Response exceeded {MAX_PDF_SIZE // (1024*1024)} MB limit"},
-            "download_io_error": {"retryable": True, "message": "Local filesystem write failed"},
+            "download_size_exceeded": {"retryable": True, "retry_after_hours": RETRY_AFTER_HOURS["download_size_exceeded"], "message": f"Response exceeded {MAX_PDF_SIZE // (1024*1024)} MB limit"},
+            "download_io_error": {"retryable": True, "retry_after_hours": RETRY_AFTER_HOURS["download_io_error"], "message": "Local filesystem write failed"},
             "internal_error": {"retryable": False, "message": "Unexpected error"},
         },
         "envelope": {
@@ -1040,6 +1057,10 @@ def main():
     _format = args.fmt or _default_format()
     _pretty = args.pretty
     _stream = args.stream
+
+    # One-time session header — lets agents detect schema drift on the very
+    # first stderr line, before any per-DOI work or network I/O.
+    _progress("session", cli_version=CLI_VERSION, schema_version=SCHEMA_VERSION)
 
     # Fire auto-update now that format is known, so the event is routable.
     if maybe_self_update():
