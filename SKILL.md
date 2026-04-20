@@ -263,3 +263,36 @@ When installed via `git clone`, the skill keeps itself in sync with upstream aut
 - **Convergence** — updates apply on the **next** invocation, not the current one (because the pull is backgrounded)
 
 Force an immediate check with `rm <skill_dir>/.git/.paper-fetch-last-update`.
+
+## Integrated Search (Extended)
+
+This skill also includes integrated academic search via OpenAlex and Semantic Scholar. Use `search_and_fetch.py` for combined workflows:
+
+### Quick Reference
+| Command | Action |
+|---------|--------|
+| `search "query"` | 纯搜索，返回论文列表 (多源融合+去重+OA状态标记) |
+| `grab "query"` | 搜索 + 自动批量下载可用的 OA PDF |
+| `refs "DOI:xxx"` | 查看参考文献 |
+| `grab-refs "DOI:xxx"` | 下载所有已知 OA 的参考文献 PDF |
+| `citations "DOI:xxx"` | 查看引用者 |
+| `grab-citations "DOI:xxx"` | 下载引用者 PDF |
+
+### Environment Variables
+| Variable | Purpose |
+|----------|---------|
+| `UNPAYWALL_EMAIL` | Unpaywall API 邮箱，用于增强搜索结果并标注具体的 OA 状态 |
+| `SEMANTIC_SCHOLAR_API_KEY` | S2 API Key（可选，提高速率） |
+
+### Command Examples
+
+```bash
+# 纯搜索
+python scripts/search_and_fetch.py search "CRISPR perturbation prediction" --limit 10 --format table
+
+# 搜索 + 下载（最常用）
+python scripts/search_and_fetch.py grab "AlphaFold protein structure" --limit 5 --out ~/papers
+
+# 只关注引文
+python scripts/search_and_fetch.py grab-refs "DOI:10.1038/s41586-021-03819-2" --out ~/refs
+```

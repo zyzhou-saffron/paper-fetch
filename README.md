@@ -1,274 +1,209 @@
-# paper-fetch — Legal Open-Access PDF Downloader
+# paper-fetch — Academic Search & Legal OA Download Pipeline
 
-[中文文档](README_CN.md)
+> Forked from [Agents365-ai/paper-fetch](https://github.com/Agents365-ai/paper-fetch), extended with **triple-source unified search** (OpenAlex + Semantic Scholar + Unpaywall) and **one-command batch download**.
 
-## What it does
+---
 
-- Downloads paper PDFs from a **DOI** (or batch file of DOIs) via legal open-access sources
-- **5-source fallback chain**: Unpaywall → Semantic Scholar `openAccessPdf` → arXiv → PubMed Central OA → bioRxiv/medRxiv
-- **Zero dependencies** — pure Python standard library, no `pip install` needed
-- **Auto-named output** — `{first_author}_{year}_{short_title}.pdf`
-- **Batch mode** — pass a file of DOIs with `--batch`, or pipe them in with `--batch -`
-- **Agent-native** — stable JSON envelope on stdout, NDJSON progress on stderr, machine-readable `schema` subcommand, TTY-aware format default, idempotent retries via `--idempotency-key`, typed exit codes (`0`/`1`/`3`/`4`), partial-success batches with `next` retry hints
-- **Safely retriable** — re-running skips already-downloaded files; `--idempotency-key` replays the exact envelope without any network I/O
-- **Never touches Sci-Hub or any paywall-bypass service** — if no OA copy exists, reports failure with metadata so you can go through ILL
-- **Self-updating** — when installed via `git clone`, each invocation spawns a detached background `git pull --ff-only` (throttled to once per 24h). Zero user action required. Disable with `export PAPER_FETCH_NO_AUTO_UPDATE=1`.
+## ✨ What's New in This Fork
 
-## Discipline Coverage
+| Feature | Original | This Fork |
+|---------|----------|-----------|
+| **Search** | ❌ Not supported | ✅ Triple-source fusion (OpenAlex + S2 + Unpaywall OA tagging) |
+| **One-click download** | DOI-only input | `grab "keyword"` — search & download in one command |
+| **Citation network** | ❌ | `grab-refs` / `grab-citations` — download an entire reference tree |
+| **Rate limiting** | None | Built-in 1.2s S2 throttle + 100ms Unpaywall interval |
+| **Output formats** | JSON only | `table` / `compact` / `citation (NSFC/APA)` / `json` |
 
-**The skill is discipline-agnostic** — it works for any field, not just life sciences or computer science. Coverage depends on whether the paper has a legal OA version, not on its subject area.
+Everything from the original project (5-source fallback download, agent-native JSON contract, idempotent retries, self-update) is **fully preserved**.
 
-| Source | Discipline scope |
-|---|---|
-| **Unpaywall** | ✅ All disciplines (covers every Crossref DOI — humanities, social sciences, physics, chemistry, economics, etc.) |
-| **Semantic Scholar** | ✅ All disciplines (cross-domain academic graph) |
-| **arXiv** | Physics, math, CS, statistics, quantitative finance, economics, EE |
-| **PubMed Central** | Biomedical only |
-| **bioRxiv / medRxiv** | Biology / medicine preprints only |
+---
 
-In practice, **Unpaywall + Semantic Scholar alone cover OA papers in chemistry, materials, economics, psychology, humanities, and every other field** via institutional repositories, SSRN, RePEc, and publisher-hosted OA copies. arXiv/PMC/bioRxiv are additional fallbacks for their specific domains. If no legal OA copy exists anywhere, the skill reports failure honestly — it will **never** bypass paywalls regardless of discipline.
+## 🚀 Quick Start
 
-## Multi-Platform Support
+### Prerequisites
 
-Works with all major AI coding agents that support the Agent Skills format:
-
-| Platform | Status | Details |
-|----------|--------|---------|
-| **Claude Code** | ✅ Full support | Native SKILL.md format |
-| **OpenClaw / ClawHub** | ✅ Full support | `metadata.openclaw` namespace |
-| **Hermes Agent** | ✅ Full support | Installable under research category |
-| **[pi-mono](https://github.com/badlogic/pi-mono)** | ✅ Full support | `metadata.pimo` namespace |
-| **OpenAI Codex** | ✅ Full support | `agents/openai.yaml` sidecar |
-| **SkillsMP** | ✅ Indexed | GitHub topics configured |
-
-## Comparison
-
-### vs No Skill (native agent)
-
-| Feature | Native agent | This skill |
-|---------|-------------|------------|
-| Resolve DOI to PDF | Ad-hoc web search | Deterministic 5-source chain |
-| Unpaywall integration | No | Yes — highest OA coverage |
-| arXiv / PMC / bioRxiv fallback | Manual | Automatic |
-| Batch download | No | Yes — `--batch dois.txt` or `--batch -` (stdin) |
-| Consistent filenames | No | Yes — `author_year_title.pdf` |
-| Machine-readable schema | No | Yes — `fetch.py schema` |
-| Structured output | No | Stable JSON envelope + NDJSON progress |
-| Idempotent retries | No | `--idempotency-key` replays cached envelope |
-| Typed exit codes | No | `0`/`1`/`3`/`4` — orchestrator can route failures |
-| Legal-only guarantee | None | Hard refuses paywall bypass |
-| Dependencies | Varies | Python stdlib only |
-
-## Prerequisites
-
-- **Python 3.8+** (standard library only, no extra packages)
-- **Unpaywall contact email** (optional but recommended) — set once:
+- **Python 3.8+** (standard library only — zero `pip install`)
+- Environment variables (recommended):
 
 ```bash
-export UNPAYWALL_EMAIL=you@example.com
+# Add to ~/.zshrc or ~/.bashrc
+export UNPAYWALL_EMAIL="your-email@example.com"       # Enables Unpaywall (highest OA coverage)
+export SEMANTIC_SCHOLAR_API_KEY="your-s2-key"          # Optional: raises S2 rate limit
 ```
 
-Add it to `~/.zshrc` / `~/.bashrc` to persist. Without it, Unpaywall is skipped and the remaining 4 sources (Semantic Scholar, arXiv, PMC, bioRxiv/medRxiv) are still tried.
-
-## Skill Installation
-
-### Claude Code
+### Installation
 
 ```bash
-# Global install
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.claude/skills/paper-fetch
-
-# Project-level install
-git clone https://github.com/Agents365-ai/paper-fetch.git .claude/skills/paper-fetch
+git clone https://github.com/zyzhou-Saffrex/paper-fetch.git ~/.agents/skills/paper-fetch
 ```
 
-### OpenClaw / ClawHub
+---
+
+## 📖 Usage
+
+### Search Only — Explore the Literature
 
 ```bash
-clawhub install paper-fetch
+# Triple-source fusion search with deduplication and OA status tagging
+python scripts/search_and_fetch.py search "CRISPR perturbation prediction" --limit 10 --format table
 
-# Or manual
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.openclaw/skills/paper-fetch
+# Filter by year range
+python scripts/search_and_fetch.py search "single cell RNA-seq" --year-from 2022 --year-to 2025 --format table
+
+# Use a single source
+python scripts/search_and_fetch.py search "graph neural network" --source s2 --format json
+
+# Export DOIs only (pipe-friendly)
+python scripts/search_and_fetch.py search "AlphaFold" --doi-only
+
+# Citation format output (NSFC or APA style)
+python scripts/search_and_fetch.py search "protein language model" --format citation --citation-style apa
 ```
 
-### Hermes Agent
+### Search + Download — The Power Move
 
 ```bash
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.hermes/skills/research/paper-fetch
+# Search and auto-download all available OA PDFs
+python scripts/search_and_fetch.py grab "foundation models biology" --out ~/papers
+
+# Limit to 5 results
+python scripts/search_and_fetch.py grab "gene regulation deep learning" --limit 5
+
+# Preview without downloading
+python scripts/search_and_fetch.py grab "AlphaFold protein structure" --dry-run
 ```
 
-Or add to `~/.hermes/config.yaml`:
-
-```yaml
-skills:
-  external_dirs:
-    - ~/myskills/paper-fetch
-```
-
-### pi-mono
+### Citation Network Download
 
 ```bash
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.pimo/skills/paper-fetch
+# Download all OA references of a paper
+python scripts/search_and_fetch.py grab-refs "DOI:10.1038/s41586-021-03819-2" --out ~/refs
+
+# Download all OA papers that cite a paper
+python scripts/search_and_fetch.py grab-citations "DOI:10.1038/s41586-021-03819-2" --out ~/citations
+
+# Just browse references (no download)
+python scripts/search_and_fetch.py refs "DOI:10.1038/s41586-021-03819-2" --format table
 ```
 
-### OpenAI Codex
+### Original DOI Download (Unchanged)
 
 ```bash
-# User-level
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.agents/skills/paper-fetch
-
-# Project-level
-git clone https://github.com/Agents365-ai/paper-fetch.git .agents/skills/paper-fetch
-```
-
-### SkillsMP
-
-```bash
-skills install paper-fetch
-```
-
-### Installation paths summary
-
-| Platform | Global path | Project path |
-|----------|-------------|--------------|
-| Claude Code | `~/.claude/skills/paper-fetch/` | `.claude/skills/paper-fetch/` |
-| OpenClaw | `~/.openclaw/skills/paper-fetch/` | `skills/paper-fetch/` |
-| Hermes Agent | `~/.hermes/skills/research/paper-fetch/` | Via `external_dirs` |
-| pi-mono | `~/.pimo/skills/paper-fetch/` | — |
-| OpenAI Codex | `~/.agents/skills/paper-fetch/` | `.agents/skills/paper-fetch/` |
-| SkillsMP | N/A (installed via CLI) | N/A |
-
-## Usage
-
-Single DOI:
-
-```bash
+# Single DOI
 python scripts/fetch.py 10.1038/s41586-021-03819-2
-```
 
-Custom output directory:
-
-```bash
-python scripts/fetch.py 10.1038/s41586-021-03819-2 --out ~/papers
-```
-
-Batch mode:
-
-```bash
-cat > dois.txt <<EOF
-10.1038/s41586-021-03819-2
-10.1126/science.abj8754
-10.1101/2023.01.01.522400
-EOF
-
+# Batch from file
 python scripts/fetch.py --batch dois.txt --out ~/papers
-```
 
-Dry-run (preview without downloading):
+# Dry-run preview
+python scripts/fetch.py 10.1038/s41586-021-03819-2 --dry-run
 
-```bash
-python scripts/fetch.py 10.1038/s41586-020-2649-2 --dry-run
-```
-
-Human-readable text output:
-
-```bash
-python scripts/fetch.py 10.1038/s41586-020-2649-2 --format text
-```
-
-Pipe DOIs from another tool:
-
-```bash
-echo 10.1038/s41586-021-03819-2 | python scripts/fetch.py --batch -
-```
-
-Safely retriable batch (replay cached envelope on retry):
-
-```bash
-python scripts/fetch.py --batch dois.txt --out ~/papers \
-    --idempotency-key monday-review-batch
-```
-
-Machine-readable self-description (for agents):
-
-```bash
+# Agent schema discovery
 python scripts/fetch.py schema --pretty
 ```
 
-Streaming NDJSON (one result per line as each DOI resolves):
+---
 
-```bash
-python scripts/fetch.py --batch dois.txt --stream
+## 🏗️ Architecture
+
+```
+paper-fetch/
+├── scripts/
+│   ├── fetch.py               # Original: 5-source DOI → PDF engine (upstream, untouched)
+│   ├── search_and_fetch.py     # NEW: Unified CLI orchestrator
+│   ├── search_openalex.py      # NEW: OpenAlex search module
+│   └── search_s2.py            # NEW: Semantic Scholar search module
+├── SKILL.md                    # Agent skill definition (updated)
+├── SEARCH_README.md            # Search extension documentation (中文)
+└── README.md                   # This file
 ```
 
-Or just ask your agent naturally:
+### Design Principles
 
-> Download the AlphaFold2 paper PDF to my `~/papers` folder
+1. **Zero coupling to upstream internals** — Only imports the public `fetch()` function from `fetch.py`. No private `_underscore` functions are used, so upstream `git pull --ff-only` auto-updates never break the extension.
+2. **Zero new dependencies** — Pure Python stdlib, same as the original.
+3. **Graceful degradation** — If one data source fails (e.g., S2 rate-limited), results from remaining sources are still returned.
+4. **Built-in rate limiting** — 1.2s delay between `fetch()` calls (respects S2's 1 req/s limit); 100ms delay between Unpaywall OA checks.
 
-> Fetch the PDF for DOI 10.1038/s41586-020-2649-2
+---
 
-> Download these three papers: 10.1038/s41586-021-03819-2, 10.1126/science.abj8754, 10.1101/2023.01.01.522400
+## 🔧 Command Reference
 
-> Check if this paper has an open-access PDF available: 10.1038/s41586-020-2649-2
+### `search_and_fetch.py` Subcommands
 
-> Batch download all DOIs from my dois.txt file into ~/papers
+| Subcommand | Description |
+|------------|-------------|
+| `search "query"` | Search only — returns a merged, deduplicated paper list |
+| `grab "query"` | Search + auto-download all OA PDFs |
+| `refs "DOI:xxx"` | List references of a paper |
+| `citations "DOI:xxx"` | List papers that cite a paper |
+| `grab-refs "DOI:xxx"` | Download reference PDFs |
+| `grab-citations "DOI:xxx"` | Download citing-paper PDFs |
 
-## Resolution Order
+### Common Flags
 
-1. **Unpaywall** — best OA location across all publishers (highest hit rate)
-2. **Semantic Scholar** — `openAccessPdf` field + `externalIds` lookup
-3. **arXiv** — if the paper has an arXiv ID
-4. **PubMed Central OA subset** — if the paper has a PMCID
-5. **bioRxiv / medRxiv** — DOI prefix `10.1101/`
-6. Otherwise → report failure with metadata (title/authors) for ILL
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--source` | `auto` | Data source: `auto` (fusion), `openalex`, `s2` |
+| `--limit N` | `10` (search) / unlimited (grab) | Max results. `0` = unlimited |
+| `--year-from` / `--year-to` | — | Publication year filter |
+| `--format` | `json` | Output: `json`, `table`, `compact`, `citation` |
+| `--citation-style` | `nsfc` | `nsfc` or `apa` |
+| `--doi-only` | off | Print DOIs only (one per line) |
+| `--no-oa-check` | off | Skip Unpaywall OA enrichment (faster) |
+| `--out DIR` | `pdfs` | Download output directory |
+| `--dry-run` | off | Preview without downloading |
 
-## Files
+---
 
-- `SKILL.md` — **the only required file**. Loaded by all platforms.
-- `scripts/fetch.py` — the downloader (pure stdlib Python)
-- `agents/openai.yaml` — OpenAI Codex sidecar configuration
-- `README.md` — this file
-- `README_CN.md` — Chinese documentation
+## 🌐 Data Sources
 
-## Known Limitations
+### Search Sources
 
-- **Coverage depends on OA availability** — if a paper has no legal OA copy, this skill cannot get it. That is a feature, not a bug.
-- **Some publisher redirects** return an HTML landing page instead of a PDF; the script validates the `%PDF` header and fails cleanly in that case
-- **No authentication** — institutional proxies (EZproxy / OpenAthens) are not supported in this version
-- **Host allowlist** — downloads are restricted to known OA provider domains; PDFs from unlisted hosts are blocked
-- **50 MB size limit** — per-PDF download cap to prevent runaway downloads
+| Source | Coverage | Unique Value |
+|--------|----------|--------------|
+| **OpenAlex** | 250M+ works, all disciplines | Free, no key needed, inverted-index abstracts |
+| **Semantic Scholar** | 200M+ works, all disciplines | AI-generated TLDR summaries, citation graph |
+| **Unpaywall** | OA enrichment for any Crossref DOI | Most comprehensive OA availability detection |
+
+### Download Sources (via `fetch.py`)
+
+| Priority | Source | Scope |
+|----------|--------|-------|
+| 1 | **Unpaywall** | All disciplines — highest OA hit rate |
+| 2 | **Semantic Scholar** | All disciplines — `openAccessPdf` field |
+| 3 | **arXiv** | Physics, Math, CS, Stats, EE |
+| 4 | **PubMed Central** | Biomedical |
+| 5 | **bioRxiv / medRxiv** | Biology / medicine preprints |
+
+---
+
+## ⚙️ Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `UNPAYWALL_EMAIL` | Recommended | Contact email for Unpaywall + OpenAlex polite pool |
+| `SEMANTIC_SCHOLAR_API_KEY` | Optional | Raises S2 rate limit from 100/5min to 1/sec |
+| `PAPER_FETCH_ALLOWED_HOSTS` | Optional | Comma-separated extra download hostnames |
+| `PAPER_FETCH_NO_AUTO_UPDATE` | Optional | Disable background `git pull` self-update |
+
+---
+
+## ⚠️ Known Limitations
+
+- **Coverage depends on OA availability** — if a paper has no legal OA copy, this tool cannot get it. This is by design.
+- **S2 rate limit** — Even with an API key, S2 allows ~1 request/second. Batch downloads of 50+ papers will take a few minutes.
+- **Host allowlist** — Downloads are restricted to known academic domains. Extend with `PAPER_FETCH_ALLOWED_HOSTS`.
+- **50 MB per-PDF cap** — Prevents runaway downloads of supplementary data bundles.
+- **Never bypasses paywalls** — This tool will not use Sci-Hub or any paywall-circumvention service.
+
+---
+
+## 📜 Credits
+
+- Original project by [**Agents365-ai**](https://github.com/Agents365-ai/paper-fetch) — MIT License
+- Search extension by [**zyzhou-Saffrex**](https://github.com/zyzhou-Saffrex)
 
 ## License
 
 MIT
-
-## Support
-
-If this skill helps your work, consider supporting the author:
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/wechat-pay.png" width="180" alt="WeChat Pay">
-      <br>
-      <b>WeChat Pay</b>
-    </td>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/alipay.png" width="180" alt="Alipay">
-      <br>
-      <b>Alipay</b>
-    </td>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/buymeacoffee.png" width="180" alt="Buy Me a Coffee">
-      <br>
-      <b>Buy Me a Coffee</b>
-    </td>
-  </tr>
-</table>
-
-## Author
-
-**Agents365-ai**
-
-- Bilibili: https://space.bilibili.com/441831884
-- GitHub: https://github.com/Agents365-ai
