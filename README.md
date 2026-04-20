@@ -34,8 +34,21 @@ export SEMANTIC_SCHOLAR_API_KEY="your-s2-key"          # Optional: raises S2 rat
 ### Installation
 
 ```bash
-git clone https://github.com/zyzhou-Saffrex/paper-fetch.git ~/.agents/skills/paper-fetch
+# Default setup for OpenAI Codex / Antigravity Agent
+git clone https://github.com/zyzhou-saffron/paper-fetch.git ~/.agents/skills/paper-fetch
 ```
+
+#### Cross-Platform Agent Installation Paths
+
+If you are using a different AI agent engine, install to its designated skills directory:
+
+| Platform | Global path | Project path |
+|----------|-------------|--------------|
+| **Claude Code** | `~/.claude/skills/paper-fetch/` | `.claude/skills/paper-fetch/` |
+| **OpenClaw** | `~/.openclaw/skills/paper-fetch/` | `skills/paper-fetch/` |
+| **Hermes Agent** | `~/.hermes/skills/research/paper-fetch/` | Via `external_dirs` |
+| **pi-mono** | `~/.pimo/skills/paper-fetch/` | — |
+| **OpenAI / Antigravity**| `~/.agents/skills/paper-fetch/` | `.agents/skills/paper-fetch/` |
 
 ---
 
