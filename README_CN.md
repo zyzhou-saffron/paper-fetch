@@ -1,237 +1,152 @@
-# paper-fetch — 合法开放获取 PDF 下载器
+# paper-fetch — 学术搜索与合法 OA 下载聚合流水线
+
+> 基于 [Agents365-ai/paper-fetch](https://github.com/Agents365-ai/paper-fetch) 的深度 Fork 版本。扩展了 **三源融合全文搜索** (OpenAlex + Semantic Scholar + Unpaywall) 以及 **一键批量检索下载** 功能。
 
 [English](README.md)
 
-## 功能简介
+---
 
-- 根据 **DOI**（或 DOI 批量文件）从合法开放获取源下载论文 PDF
-- **5 源回退链**：Unpaywall → Semantic Scholar `openAccessPdf` → arXiv → PubMed Central OA → bioRxiv/medRxiv
-- **零依赖** — 纯 Python 标准库，无需 `pip install`
-- **自动命名**：`{第一作者}_{年份}_{简短标题}.pdf`
-- **批量模式**：`--batch` 传入 DOI 列表文件，或用 `--batch -` 从 stdin 管道读入
-- **Agent 原生** — stdout 输出稳定的 JSON 信封，stderr 输出 NDJSON 进度事件，提供机器可读的 `schema` 子命令，`--format` 自动识别 TTY，通过 `--idempotency-key` 支持幂等重试，退出码分类（`0`/`1`/`3`/`4`），批量部分失败时输出带 `next` 重试提示的 `ok: "partial"` 信封
-- **安全可重试** — 重复运行会跳过已下载文件；`--idempotency-key` 直接复用原信封，无任何网络 I/O
-- **不使用 Sci-Hub 或任何绕过付费墙的服务** — 没有 OA 版本时会报告失败并输出元数据，便于走馆际互借
-- **自动更新** — 通过 `git clone` 安装时，每次调用会后台 detach 一个 `git pull --ff-only`（24 小时内至多一次）。无需用户任何操作。禁用：`export PAPER_FETCH_NO_AUTO_UPDATE=1`。
+## ✨ Fork 版本新特性
 
-## 学科覆盖
+| 功能 | 原版 | 本 Fork 版本 |
+|---------|----------|-----------|
+| **搜索** | ❌ 不支持 | ✅ 三源融合 (OpenAlex + S2 + Unpaywall OA状态标记) |
+| **一键下载** | 仅支持已知 DOI 下载 | `grab "关键词"` — 检索、解析、去重、合法防封下载一条龙 |
+| **引文网络跟踪**| ❌ | `grab-refs` / `grab-citations` — 批量下载所有参考文献/被引文献 |
+| **速率限制保护** | 无限速 | S2 API 1.2秒延迟注入 + Unpaywall 100ms 拉黑保护 |
+| **输出格式** | 仅 JSON / Text | JSON / `table` (表格) / `compact` / `citation` (标准引文NSFC/APA) |
 
-**本 skill 学科无关** —— 不限于生命科学或计算机，任何学科都支持。能否拿到取决于该论文是否有合法 OA 版本，而不是学科本身。
+同时，原版的所有核心功能（5源回退下载链、Agent 原生 JSON 契约、幂等重试、自动后台更新）在此被 **全部完美保留**。
 
-| 来源 | 学科范围 |
-|---|---|
-| **Unpaywall** | ✅ 全学科（覆盖 Crossref 所有 DOI —— 人文、社科、物理、化学、经济等都支持） |
-| **Semantic Scholar** | ✅ 全学科（跨领域学术图谱） |
-| **arXiv** | 物理、数学、CS、统计、定量金融、经济学、电气工程 |
-| **PubMed Central** | 仅生物医学 |
-| **bioRxiv / medRxiv** | 仅生物/医学预印本 |
+---
 
-实际使用中，**仅 Unpaywall + Semantic Scholar 两个源就足以覆盖化学、材料、经济、心理学、人文社科等任何领域的 OA 论文** —— 它们会自动命中机构知识库、SSRN、RePEc 以及出版商自托管的 OA 版本。arXiv/PMC/bioRxiv 只是针对各自领域的额外回退。若论文确实没有任何合法 OA 版本，skill 会如实报告失败 —— 按设计**绝不**绕过付费墙，任何学科都一视同仁。
+## 🚀 快速上手
 
-## 多平台支持
+### 环境要求
 
-| 平台 | 状态 | 说明 |
-|------|------|------|
-| **Claude Code** | ✅ 完全支持 | 原生 SKILL.md |
-| **OpenClaw / ClawHub** | ✅ 完全支持 | `metadata.openclaw` 命名空间 |
-| **Hermes Agent** | ✅ 完全支持 | 安装到 research 分类 |
-| **[pi-mono](https://github.com/badlogic/pi-mono)** | ✅ 完全支持 | `metadata.pimo` 命名空间 |
-| **OpenAI Codex** | ✅ 完全支持 | `agents/openai.yaml` sidecar |
-| **SkillsMP** | ✅ 已索引 | GitHub topics 已配置 |
-
-## 对比
-
-### vs 原生 agent（无 skill）
-
-| 功能 | 原生 agent | 本 skill |
-|------|----------|----------|
-| DOI → PDF | 临时网络搜索 | 确定性 5 源链 |
-| Unpaywall 集成 | 无 | 有，覆盖率最高 |
-| arXiv / PMC / bioRxiv 回退 | 手动 | 自动 |
-| 批量下载 | 无 | `--batch dois.txt` 或 `--batch -`（stdin） |
-| 一致的文件命名 | 无 | `author_year_title.pdf` |
-| 机器可读 schema | 无 | `fetch.py schema` |
-| 结构化输出 | 无 | 稳定 JSON 信封 + stderr NDJSON 进度 |
-| 幂等重试 | 无 | `--idempotency-key` 复用原信封 |
-| 退出码分类 | 无 | `0`/`1`/`3`/`4` — orchestrator 可按类路由失败 |
-| 合法来源保证 | 无 | 硬性拒绝付费墙绕过 |
-| 依赖 | 各异 | 仅 Python 标准库 |
-
-## 环境要求
-
-- **Python 3.8+**（仅标准库）
-- **Unpaywall 联系邮箱**（可选但推荐）：
+- **Python 3.8+**（仅要求标准库——无需 `pip install`）
+- 建议配置的环境变量：
 
 ```bash
-export UNPAYWALL_EMAIL=you@example.com
+# 写入 ~/.zshrc 或 ~/.bashrc
+export UNPAYWALL_EMAIL="你的真实邮箱@example.com"       # 启用最高覆盖率的 Unpaywall 源
+export SEMANTIC_SCHOLAR_API_KEY="你的S2-API-KEY"       # 可选：突破 Semantic Scholar 调用限制
 ```
 
-加入 `~/.zshrc` / `~/.bashrc` 持久化。未设置时 Unpaywall 会被跳过，其余 4 个来源（Semantic Scholar、arXiv、PMC、bioRxiv/medRxiv）仍然可用。
+### 跨平台 AI Agent 安装
 
-## 安装
-
-### Claude Code
+如果你正在使用 AI Agent，将其克隆至其默认的技能扫描目录下即可：
 
 ```bash
-# 全局安装
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.claude/skills/paper-fetch
+# OpenAI Codex / Antigravity Agent:
+git clone https://github.com/zyzhou-saffron/paper-fetch.git ~/.agents/skills/paper-fetch
 
-# 项目级
-git clone https://github.com/Agents365-ai/paper-fetch.git .claude/skills/paper-fetch
+# Claude Code:
+git clone https://github.com/zyzhou-saffron/paper-fetch.git ~/.claude/skills/paper-fetch
+
+# OpenClaw:
+git clone https://github.com/zyzhou-saffron/paper-fetch.git ~/.openclaw/skills/paper-fetch
 ```
 
-### OpenClaw / ClawHub
+---
+
+## 📖 核心使用场景
+
+### 场景一：纯检索 — 探索文献边界
+*聚合、去重、展示带有 TLDR 高级摘要的文献卡片。*
 
 ```bash
-clawhub install paper-fetch
+# 三源融合搜索
+python scripts/search_and_fetch.py search "CRISPR perturbation prediction" --limit 10 --format table
 
-# 或手动
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.openclaw/skills/paper-fetch
+# 按年份过滤
+python scripts/search_and_fetch.py search "single cell RNA-seq" --year-from 2022 --year-to 2025 --format table
+
+# 指定单独数据源并导出 JSON 供别的管道使用
+python scripts/search_and_fetch.py search "graph neural network" --source s2 --format json
+
+# 提取 DOI 列表
+python scripts/search_and_fetch.py search "AlphaFold" --doi-only
+
+# 导出参考文献格式 (支持 nsfc 和 apa)
+python scripts/search_and_fetch.py search "protein language model" --format citation --citation-style nsfc
 ```
 
-### Hermes Agent
+### 场景二：检索并下载 — 一步到位
+*我不关心这些论文的状态，请直接把合法 OA 的 PDF 全拉到这个文件夹！*
 
 ```bash
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.hermes/skills/research/paper-fetch
+# 搜索并自动批量提取 OA 全文
+python scripts/search_and_fetch.py grab "foundation models biology" --out ~/papers
+
+# 限量前5篇
+python scripts/search_and_fetch.py grab "gene regulation deep learning" --limit 5
+
+# 打印演习名单（预览不下载）
+python scripts/search_and_fetch.py grab "AlphaFold protein structure" --dry-run
 ```
 
-或在 `~/.hermes/config.yaml` 中配置：
-
-```yaml
-skills:
-  external_dirs:
-    - ~/myskills/paper-fetch
-```
-
-### pi-mono
+### 场景三：顺藤摸瓜 — 引文网络扫荡
+*我读了一篇神作，我想把它所有的引用源头、以及后续致敬工作全都拉下来。*
 
 ```bash
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.pimo/skills/paper-fetch
+# 获取某篇论文引用的所有合法文献
+python scripts/search_and_fetch.py grab-refs "DOI:10.1038/s41586-021-03819-2" --out ~/refs
+
+# 获取未来引用了这篇论文的所有合法文献
+python scripts/search_and_fetch.py grab-citations "DOI:10.1038/s41586-021-03819-2" --out ~/citations
 ```
 
-### OpenAI Codex
+### 场景四：基于单篇文献的极速下载（原项目用法）
+*基于原版的单篇极速引擎，依然完美生效。*
 
 ```bash
-git clone https://github.com/Agents365-ai/paper-fetch.git ~/.agents/skills/paper-fetch
-```
-
-### SkillsMP
-
-```bash
-skills install paper-fetch
-```
-
-### 安装路径一览
-
-| 平台 | 全局路径 | 项目路径 |
-|------|---------|---------|
-| Claude Code | `~/.claude/skills/paper-fetch/` | `.claude/skills/paper-fetch/` |
-| OpenClaw | `~/.openclaw/skills/paper-fetch/` | `skills/paper-fetch/` |
-| Hermes Agent | `~/.hermes/skills/research/paper-fetch/` | 通过 `external_dirs` |
-| pi-mono | `~/.pimo/skills/paper-fetch/` | — |
-| OpenAI Codex | `~/.agents/skills/paper-fetch/` | `.agents/skills/paper-fetch/` |
-| SkillsMP | CLI 安装 | 无 |
-
-## 使用
-
-单个 DOI：
-
-```bash
+# 自动通过5大源链寻找下载
 python scripts/fetch.py 10.1038/s41586-021-03819-2
-```
 
-指定输出目录：
-
-```bash
-python scripts/fetch.py 10.1038/s41586-021-03819-2 --out ~/papers
-```
-
-批量模式：
-
-```bash
+# 批量拉取文本
 python scripts/fetch.py --batch dois.txt --out ~/papers
 ```
 
-预览模式（不下载）：
+---
 
-```bash
-python scripts/fetch.py 10.1038/s41586-020-2649-2 --dry-run
+## ⚙️ 架构与组件
+
+```
+paper-fetch/
+├── scripts/
+│   ├── fetch.py               # 原版：5大源链的内核底层 (零修改，随上游动态更新)
+│   ├── search_and_fetch.py     # 新增：集成检索总编排器 (Orchestrator)
+│   ├── search_openalex.py      # 新增：OpenAlex 数据源适配
+│   └── search_s2.py            # 新增：Semantic Scholar 数据源适配
+├── SKILL.md                    # Agent 技能标识描述文件 (已更新触发词)
+├── SEARCH_README.md            # 新特性的补充文档
+├── README.md                   # 英文说明
+└── README_CN.md                # 本文件
 ```
 
-人类可读文本输出：
+### 设计哲学
 
-```bash
-python scripts/fetch.py 10.1038/s41586-020-2649-2 --format text
-```
+1. **绝对解耦**：所有的新增逻辑均调用于公开暴露的 `fetch()` 接口，坚决不依赖私有底层的 `_get_json` 等逻辑，确保此魔改版在遭受底层的后台 `git pull --ff-only` 更新冲击时**永不崩溃**。
+2. **零新增依赖**：为了符合原本小而美的理念，整个项目仍然仅依赖 Python 原生系统库，拒绝对各种第三方包的裹挟。
 
-从管道读入 DOI：
+---
 
-```bash
-echo 10.1038/s41586-021-03819-2 | python scripts/fetch.py --batch -
-```
+## ⚠️ 已知限制
 
-可安全重试的批量下载（重试时直接复用原信封）：
+- **必须存在 OA 版本**：本脚本尊重版权法案。如果目标文献全网都未托管合法的 OA 副件，脚本将坦诚宣告 0 产出，这在机制上就是不破壁的设计，而非 Bug。
+- **速率封锁保护**：Semantic Scholar即使用了 API Key，也只能维持 `1 次/秒` 左右的并发请求。因此如果你下指令下载 50 篇文章，系统强制注入了每次间隔 `1.2` 秒的安全等待墙，所以用不着心急，慢慢刷完即可。
+- **域名白板白名单防御**：PDF 下载局限于可信的论文出版端点（Nature, Springer 等），可通过自行挂载环境变量 `PAPER_FETCH_ALLOWED_HOSTS` 拓展解限。
 
-```bash
-python scripts/fetch.py --batch dois.txt --out ~/papers \
-    --idempotency-key monday-review-batch
-```
+---
 
-机器可读自描述（供 agent 使用）：
+## 📜 致谢与支持
 
-```bash
-python scripts/fetch.py schema --pretty
-```
+**原开源底座通过 [Agents365-ai](https://github.com/Agents365-ai/paper-fetch) 分发构建。**
+- Bilibili: https://space.bilibili.com/441831884
+- 本扩展与多源合并架构系统由 [zyzhou-Saffrex](https://github.com/zyzhou-Saffrex) 开发及维护。
 
-流式 NDJSON（每个 DOI 解析后立即输出一行结果）：
-
-```bash
-python scripts/fetch.py --batch dois.txt --stream
-```
-
-或者直接对 agent 说：
-
-> 帮我把 AlphaFold2 那篇论文下到 `~/papers`
-
-> 帮我下载这个 DOI 的 PDF：10.1038/s41586-020-2649-2
-
-> 下载这三篇论文：10.1038/s41586-021-03819-2, 10.1126/science.abj8754, 10.1101/2023.01.01.522400
-
-> 看看这篇论文有没有开放获取的 PDF：10.1038/s41586-020-2649-2
-
-> 把 dois.txt 里的所有 DOI 批量下载到 ~/papers
-
-## 解析顺序
-
-1. **Unpaywall** — 全出版社 OA 最佳位置（命中率最高）
-2. **Semantic Scholar** — `openAccessPdf` 字段 + `externalIds`
-3. **arXiv** — 论文有 arXiv ID 时
-4. **PubMed Central OA 子集** — 论文有 PMCID 时
-5. **bioRxiv / medRxiv** — DOI 前缀为 `10.1101/`
-6. 都失败 → 输出元数据提示走馆际互借
-
-## 文件说明
-
-- `SKILL.md` — **唯一必需文件**，所有平台都加载它
-- `scripts/fetch.py` — 下载器（纯标准库）
-- `agents/openai.yaml` — Codex 配置
-- `README.md` / `README_CN.md` — 文档
-
-## 已知限制
-
-- **覆盖率取决于 OA 可用性** — 没有合法 OA 版本的论文本 skill 无法获取，这是刻意设计
-- **部分出版社重定向**返回 HTML 落地页而非 PDF，脚本会校验 `%PDF` 头并优雅失败
-- **不支持机构代理**（EZproxy / OpenAthens）
-- **域名白名单** — 下载限制在已知 OA 提供商域名内，未列出的主机会被拦截
-- **50 MB 大小限制** — 单个 PDF 下载上限，防止异常大文件
-
-## 许可
-
-MIT
-
-## 支持
-
-如果这个 skill 对你有帮助，欢迎支持作者：
+如果原始的 `paper-fetch` 引擎功能曾在你的研究生涯里极大挽救了你的时间，欢迎赞助原版作者一杯咖啡：
 
 <table>
   <tr>
@@ -253,9 +168,5 @@ MIT
   </tr>
 </table>
 
-## 作者
-
-**Agents365-ai**
-
-- Bilibili: https://space.bilibili.com/441831884
-- GitHub: https://github.com/Agents365-ai
+## 许可
+MIT

@@ -212,10 +212,33 @@ paper-fetch/
 
 ---
 
-## 📜 Credits
+## 📜 Credits & Support
 
-- Original project by [**Agents365-ai**](https://github.com/Agents365-ai/paper-fetch) — MIT License
-- Search extension by [**zyzhou-Saffrex**](https://github.com/zyzhou-Saffrex)
+**Original project by [Agents365-ai](https://github.com/Agents365-ai/paper-fetch)**
+- Bilibili: https://space.bilibili.com/441831884
+- Search extension and modularization by [zyzhou-Saffrex](https://github.com/zyzhou-Saffrex)
+
+If the original `paper-fetch` download engine helps your work, consider supporting the original author:
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/wechat-pay.png" width="180" alt="WeChat Pay">
+      <br>
+      <b>WeChat Pay</b>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/alipay.png" width="180" alt="Alipay">
+      <br>
+      <b>Alipay</b>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/buymeacoffee.png" width="180" alt="Buy Me a Coffee">
+      <br>
+      <b>Buy Me a Coffee</b>
+    </td>
+  </tr>
+</table>
 
 ## License
 
