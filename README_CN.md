@@ -140,33 +140,5 @@ paper-fetch/
 
 ---
 
-## 📜 致谢与支持
-
-**原开源底座通过 [Agents365-ai](https://github.com/Agents365-ai/paper-fetch) 分发构建。**
-- Bilibili: https://space.bilibili.com/441831884
-- 本扩展与多源合并架构系统由 [zyzhou-Saffrex](https://github.com/zyzhou-Saffrex) 开发及维护。
-
-如果原始的 `paper-fetch` 引擎功能曾在你的研究生涯里极大挽救了你的时间，欢迎赞助原版作者一杯咖啡：
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/wechat-pay.png" width="180" alt="WeChat Pay">
-      <br>
-      <b>微信支付</b>
-    </td>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/alipay.png" width="180" alt="Alipay">
-      <br>
-      <b>支付宝</b>
-    </td>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/buymeacoffee.png" width="180" alt="Buy Me a Coffee">
-      <br>
-      <b>Buy Me a Coffee</b>
-    </td>
-  </tr>
-</table>
-
 ## 许可
 MIT
